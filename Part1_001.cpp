@@ -1,9 +1,15 @@
+//
+// Created by xcmworkharder on 2022/08/06
+//
+
 #include <iostream>
 #include <unordered_map>
 //#include <initializer_list>
 #include <map>
 #include <algorithm>
 #include <vector>
+#include <functional> // std::function
+#include <tuple>
 
 using namespace std;
 
@@ -165,13 +171,18 @@ auto range(T begin, T end, U step)
 // 7. 可调用对象
 // 7.1 函数
 void func71(void) {
-	cout << "func71" << endl;
+	cout << __FUNCTION__ << endl;
 }
 
 // 7.2 具有operator()的类（结构体）对象（仿函数）
 struct Foo72 {
 	void operator()(void) {
-		cout << "Foo72" << endl;
+		cout << __FUNCTION__ << endl;
+	}
+
+	static int foo_func(int a) {
+		cout << __FUNCTION__ << a << endl;
+		return a;
 	}
 };
 
@@ -180,11 +191,16 @@ struct Bar73 {
 	using fr_t = void(*)(void);
 
 	static void func(void) {
-		cout << "Bar73" << endl;
+		cout << __FUNCTION__ << endl;
 	}
 
 	operator fr_t(void) {
 		return func;
+	}
+
+	int operator()(int a) {
+		cout << __FUNCTION__ << a << endl;
+		return a;
 	}
 };
 
@@ -193,28 +209,82 @@ struct A74 {
 	int a;
 
 	void mem_func(void) {
-		cout << "A74" << endl;
+		cout << __FUNCTION__ << endl;
+	}
+};
+
+// 8. lambda表达式
+class A8 {
+public:
+	int i_ = 0;
+
+	void func(int x, int y) {
+		// auto x1 = [] { return i_; } // 没有捕获外部变量
+		auto x2 = [=] { return i_ + x + y; }; // ok
+		auto x3 = [&] { return i_ + x + y; }; // ok
+		auto x4 = [this] { return i_; }; 	 // ok
+		// auto a5 = [this] { return i_ + x + y; } // error 没有捕获x,y
+		auto x6 = [this, x, y] { return i_ + x + y; }; // ok
+		auto x7 = [this] { return i_++; }; // ok
 	}
 };
 
 int main() {
 
+	// 9. tuple
+	int a = 1;
+	string b = "aa";
+	int c = 2;
+	auto tp = std::tie(a, b, c);
+	//auto tp = std::tie(1, 2, "aa"); // error tie(int&, int&, string&)
+	int x, y;
+	string z;
+	tie(std::ignore, std::ignore, y) = tp;
+	cout << x << ", " << y << ", " << z << endl;
+
+	tuple<int, string, float> t1(10, "test", 2.3);
+	int n = 10;
+	auto t2 = tuple_cat(t1, make_pair("Foo", "bar"), t1, tie(n));
+	auto test = get<4>(t2);
+	cout << test << endl;
+
+	// 8. lambda表达式
+	// int a = 0;
+	// auto f1 = [=]() mutable { return a++; };
+	// std::function<int(int)> f2 = [](int a) { return a; };
+
+	// 7.5 std::function可调用对象包装器
+	// 可以容纳除了类成员（函数）指针外所有可调用对象
+	// 如下为测试
+	// 普通函数
+	// std::function<void(void)> fr1 = func71;
+	// fr1();
+
+	// // 静态成员函数
+	// std::function<int(int)> fr2 = Foo72::foo_func;
+	// cout << fr2(123) << endl;
+
+	// // 仿函数
+	// Bar73 bar73;
+	// fr2 = bar73;
+	// cout << fr2(134) << endl;
+
 	// 7. 可调用对象调用
-	void(*func_ptr71)(void) = &func71;
-	func_ptr71();
+	// void(*func_ptr71)(void) = &func71;
+	// func_ptr71();
 
-	Foo72 foo72;
-	foo72();
+	// Foo72 foo72;
+	// foo72();
 
-	Bar73 bar73;
-	bar73();
+	// Bar73 bar73;
+	// bar73();
 
-	void (A74::*mem_func_ptr74)(void) = &A74::mem_func;
-	int A74::*mem_obj_ptr74 = &A74::a;
+	// void (A74::*mem_func_ptr74)(void) = &A74::mem_func;
+	// int A74::*mem_obj_ptr74 = &A74::a;
 
-	A74 aa74;
-	(aa74.*mem_func_ptr74)();
-	aa74.*mem_obj_ptr74 = 123;
+	// A74 aa74;
+	// (aa74.*mem_func_ptr74)();
+	// aa74.*mem_obj_ptr74 = 123;
 
 	// 6. 自定义range测试
 	// for (auto i : range(2, 6, 1)) {
